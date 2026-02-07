@@ -1,47 +1,189 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My FlashTabs</title>
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
-    <div class="container">
-        <div id="flashcard" class="flashcard">
-            <button id="play-audio" class="audio-btn" title="Play Audio">
-                <svg class="audio-icon" viewBox="0 0 24 24">
-                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                </svg>
-            </button>
-            
-            <div class="word-display">
-                <h1 id="word" class="word">Loading...</h1>
-                <p id="meaning" class="meaning hidden">...</p>
+    <!-- Top Bar -->
+    <div class="app-shell">
+        <!-- Header / Top Bar -->
+        <header class="app-header">
+            <div class="header-left">
+                <button id="home-btn" class="btn-icon small" title="Back" style="display: none;">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                    </svg>
+                </button>
             </div>
 
-            <div id="reveal-area" class="reveal-overlay">
-                <button id="reveal-btn" class="btn-primary">Show Answer</button>
+            <div class="header-title">
+                <h1>My FlashTabs</h1>
             </div>
 
-            <div id="actions" class="actions hidden">
-                <button class="btn-action btn-hard" data-ease="1">Hard</button>
-                <button class="btn-action btn-good" data-ease="2.5">Good</button>
-                <button class="btn-action btn-easy" data-ease="4">Easy</button>
+            <div class="header-right">
+                <button id="dashboard-btn" class="btn-icon small" title="Manage Decks">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path
+                            d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z" />
+                    </svg>
+                </button>
             </div>
-        </div>
-        
-        <div id="empty-state" class="flashcard hidden">
-            <h1 class="word">All Done! 🎉</h1>
-            <p class="meaning">You've reviewed all cards for now.</p>
-            <button id="reset-btn" class="btn-outline" style="margin-top: 20px;">Reset for Demo</button>
-        </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="app-content">
+            <!-- VIEW: DASHBOARD -->
+            <div id="view-dashboard" class="view-container">
+                <div class="dashboard-header">
+                    <h2>My Decks</h2>
+                    <p class="subtitle">Select a deck to review or manage</p>
+                </div>
+                <div id="deck-grid" class="deck-grid">
+                    <!-- Decks injected here -->
+                    <div class="deck-card create-deck-card" id="create-deck-trigger">
+                        <div class="deck-icon">+</div>
+                        <div class="deck-info">
+                            <h3>Create New Deck</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: DECK DETAILS (MANAGE) -->
+            <div id="view-manage" class="view-container hidden manage-layout">
+                <aside class="sidebar">
+                    <div class="sidebar-header">
+                        <h2 id="manage-deck-title">Deck Name</h2>
+                        <button id="export-deck-btn" class="btn-icon small secondary" title="Export Deck"
+                            style="margin-right: 8px;">
+                            <svg class="icon" viewBox="0 0 24 24">
+                                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+                            </svg>
+                        </button>
+                        <button id="start-review-btn" class="btn-icon small secondary" title="Start Review">
+                            <svg class="icon" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="card-list-wrapper">
+                        <ul id="card-list">
+                            <!-- Cards list -->
+                        </ul>
+                    </div>
+                    <div class="sidebar-footer">
+                        <span id="card-count-badge">0 cards</span>
+                    </div>
+                </aside>
+
+                <div class="manage-content">
+                    <!-- Add Word Section -->
+                    <div class="add-card-section">
+                        <h3>Add New Word</h3>
+                        <div class="input-row">
+                            <input type="text" id="input-word" placeholder="Word" autocomplete="off">
+                            <input type="text" id="input-meaning" placeholder="Meaning" autocomplete="off">
+                            <button id="add-card-btn" class="btn-primary">Add</button>
+                        </div>
+                    </div>
+
+                    <!-- Selected Card Details -->
+                    <div id="card-details-panel" class="card-details-panel hidden">
+                        <div class="detail-header">
+                            <h1 id="detail-word">Word</h1>
+                            <button id="play-audio-detail" class="btn-icon small-icon" title="Play Audio">
+                                <svg class="icon" viewBox="0 0 24 24">
+                                    <path
+                                        d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+                                </svg>
+                            </button>
+                        </div>
+                        <p id="detail-meaning" class="detail-meaning">Meaning</p>
+
+                        <div class="detail-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">Next Review</span>
+                                <span id="detail-next-review" class="stat-value">Now</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Interval</span>
+                                <span id="detail-interval" class="stat-value">0h</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Ease</span>
+                                <span id="detail-ease" class="stat-value">2.5</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-actions">
+                            <button id="delete-card-btn" class="btn-danger-outline">Delete Word</button>
+                        </div>
+                    </div>
+
+                    <div id="no-selection-msg" class="empty-selection">
+                        <p>Select a word to view details</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: REVIEW (FLASHCARD) -->
+            <div id="view-review" class="view-container hidden">
+                <div id="empty-state" class="empty-state hidden">
+                    <div class="empty-icon">🎉</div>
+                    <h2 class="word">All Done!</h2>
+                    <p class="meaning">You've reviewed all cards for now.</p>
+                    <button id="back-to-home-btn" class="btn-secondary">Back to Decks</button>
+                </div>
+
+                <div id="flashcard" class="card">
+                    <div class="card-content">
+                        <h2 id="word" class="word">Loading...</h2>
+                        <div id="reveal-area" class="reveal-area">
+                            <button id="reveal-btn" class="btn-primary large">Show Answer</button>
+                        </div>
+                        <p id="meaning" class="meaning hidden">Loading...</p>
+                    </div>
+
+                    <div id="actions" class="actions hidden">
+                        <button class="btn-action easy" data-ease="4" title="Shortcut: 1">Easy</button>
+                        <button class="btn-action good" data-ease="2.5" title="Shortcut: 2">Good</button>
+                        <button class="btn-action hard" data-ease="1" title="Shortcut: 3">Hard</button>
+                    </div>
+
+                    <button id="play-audio" class="btn-icon audio-btn" title="Play Audio">
+                        <svg class="icon" viewBox="0 0 24 24">
+                            <path
+                                d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="stats-bar">
+                    <span>Due: <span id="due-count">0</span></span>
+                </div>
+            </div>
+        </main>
     </div>
 
-    <div class="stats">
-        Due: <span id="due-count">0</span>
+    <!-- CREATE DECK MODAL -->
+    <div id="create-deck-modal" class="modal hidden">
+        <div class="modal-content">
+            <span id="close-create-modal" class="close">&times;</span>
+            <h2>Create New Deck</h2>
+            <div class="form-group">
+                <label>Deck Name</label>
+                <input type="text" id="new-deck-name" placeholder="e.g. History, Coding...">
+            </div>
+            <button id="confirm-create-deck-btn" class="btn-primary full-width">Create Deck</button>
+        </div>
     </div>
 
     <script src="script.js"></script>
 </body>
+
 </html>

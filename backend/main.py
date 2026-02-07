@@ -1,6 +1,8 @@
-import os
 import io
+import os
 import edge_tts
+import uuid
+import json
 from fastapi import FastAPI, UploadFile, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from databases import Database
@@ -45,10 +47,33 @@ async def lifespan(app: FastAPI):
         created_at TIMESTAMP DEFAULT NOW()
     );
     """)
-    
-    # create_index_query
     await database.execute("CREATE INDEX IF NOT EXISTS idx_audio_cache_word_voice ON audio_cache (word, voice);")
-    
+
+    # Decks Table
+    await database.execute("""
+    CREATE TABLE IF NOT EXISTS decks (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+    );
+    """)
+
+    # Cards Table
+    await database.execute("""
+    CREATE TABLE IF NOT EXISTS cards (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        deck_id UUID NOT NULL,
+        word TEXT NOT NULL,
+        meaning TEXT NOT NULL,
+        interval FLOAT DEFAULT 0,
+        repetition INTEGER DEFAULT 0,
+        ease FLOAT DEFAULT 2.5,
+        next_review BIGINT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+    );
+    """)
+    await database.execute("CREATE INDEX IF NOT EXISTS idx_cards_deck_id ON cards (deck_id);")
+
     yield
     # Shutdown
     await database.disconnect()
@@ -58,15 +83,125 @@ app = FastAPI(lifespan=lifespan)
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For extension
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Pydantic Models
+from pydantic import BaseModel
+from typing import List
+
+class DeckCreate(BaseModel):
+    name: str
+
+class CardCreate(BaseModel):
+    word: str
+    meaning: str
+
+class DeckImport(BaseModel):
+    name: str
+    cards: List[CardCreate]
+
 @app.get("/")
 async def root():
     return {"message": "FlashCard TTS Backend Running"}
+
+# --- Deck APIs ---
+
+@app.get("/decks")
+async def get_decks():
+    query = "SELECT * FROM decks ORDER BY created_at DESC"
+    return await database.fetch_all(query)
+
+@app.post("/decks")
+async def create_deck(deck: DeckImport):
+    # 1. Create Deck
+    deck_id = uuid.uuid4()
+    query_deck = "INSERT INTO decks (id, name) VALUES (:id, :name)"
+    await database.execute(query_deck, values={"id": deck_id, "name": deck.name})
+
+    # 2. Create Cards & Trigger Audio
+    if deck.cards:
+        values = []
+        for card in deck.cards:
+            values.append({
+                "id": uuid.uuid4(),
+                "deck_id": deck_id,
+                "word": card.word,
+                "meaning": card.meaning
+            })
+            # Background Audio Generation Trigger (Fire and forget or queue)
+            # For now, we'll let the client trigger audio fetches or do it lazily. 
+            # Or we can just let 'get_audio' handle it when reviewed.
+            
+        query_cards = """
+        INSERT INTO cards (id, deck_id, word, meaning) 
+        VALUES (:id, :deck_id, :word, :meaning)
+        """
+        await database.execute_many(query_cards, values)
+
+    return {"id": deck_id, "name": deck.name, "card_count": len(deck.cards)}
+
+@app.post("/decks/{deck_id}/cards")
+async def add_cards_to_deck(deck_id: str, cards: List[CardCreate]):
+    if not cards:
+        return {"message": "No cards to add"}
+        
+    values = []
+    for card in cards:
+        values.append({
+            "id": uuid.uuid4(),
+            "deck_id": deck_id,
+            "word": card.word,
+            "meaning": card.meaning
+        })
+        
+    query_cards = """
+    INSERT INTO cards (id, deck_id, word, meaning) 
+    VALUES (:id, :deck_id, :word, :meaning)
+    """
+    await database.execute_many(query_cards, values)
+    
+    return {"deck_id": deck_id, "added_count": len(cards)}
+
+@app.get("/sync")
+async def sync_data():
+    """Returns all decks and cards for client sync"""
+    decks = await database.fetch_all("SELECT * FROM decks")
+    cards = await database.fetch_all("SELECT * FROM cards")
+    
+    # Format for client
+    result = {
+        "decks": [dict(d) for d in decks],
+        "cards": [dict(c) for c in cards]
+    }
+    return result
+
+class CardUpdate(BaseModel):
+    interval: float
+    repetition: int
+    ease: float
+    next_review: int
+
+@app.patch("/cards/{card_id}")
+async def update_card(card_id: str, update: CardUpdate):
+    query = """
+    UPDATE cards 
+    SET interval = :interval, repetition = :repetition, ease = :ease, next_review = :next_review
+    WHERE id = :id
+    """
+    await database.execute(query, values={
+        "id": card_id,
+        "interval": update.interval,
+        "repetition": update.repetition,
+        "ease": update.ease,
+        "next_review": update.next_review
+    })
+    return {"status": "updated", "id": card_id}
+
+# --- TTS API ---
 
 @app.get("/audio")
 async def get_audio(
@@ -113,3 +248,32 @@ async def get_audio(
     except Exception as e:
         print(f"Error generating TTS: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- Deck Management (Delete & Rename) ---
+
+@app.delete("/decks/{deck_id}")
+async def delete_deck(deck_id: str):
+    # 1. Delete all cards in deck
+    await database.execute("DELETE FROM cards WHERE deck_id = :deck_id", values={"deck_id": deck_id})
+    
+    # 2. Delete deck
+    await database.execute("DELETE FROM decks WHERE id = :id", values={"id": deck_id})
+    
+    return {"status": "deleted", "id": deck_id}
+
+class DeckUpdate(BaseModel):
+    name: str
+
+@app.patch("/decks/{deck_id}")
+async def update_deck(deck_id: str, deck: DeckUpdate):
+    query = "UPDATE decks SET name = :name WHERE id = :id"
+    await database.execute(query, values={"name": deck.name, "id": deck_id})
+    return {"status": "updated", "id": deck_id, "name": deck.name}
+
+@app.delete("/cards/{card_id}")
+async def delete_card(card_id: str):
+    query = "DELETE FROM cards WHERE id = :id"
+    await database.execute(query, values={"id": card_id})
+    return {"status": "deleted", "id": card_id}
+
+
