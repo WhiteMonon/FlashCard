@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+edge-tts
+asyncpg
+databases[postgresql]
+python-multipart
+sqlalchemy
+psycopg2-binary

@@ -1,0 +1,171 @@
+:root {
+    --primary-color: #6366f1;
+    --primary-hover: #4f46e5;
+    --background-color: #0f172a;
+    --card-bg: #1e293b;
+    --text-color: #f8fafc;
+    --text-muted: #94a3b8;
+    --border-color: #334155;
+    --success-color: #22c55e;
+    --warning-color: #eab308;
+    --danger-color: #ef4444;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.container {
+    width: 100%;
+    max-width: 600px;
+    padding: 20px;
+}
+
+.flashcard {
+    background-color: var(--card-bg);
+    border-radius: 24px;
+    padding: 48px;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-color);
+    transition: transform 0.3s ease;
+}
+
+.flashcard:hover {
+    transform: translateY(-5px);
+}
+
+.word-display {
+    margin-bottom: 32px;
+}
+
+.word {
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin-bottom: 12px;
+    background: linear-gradient(to right, #818cf8, #c084fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.meaning {
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 40px;
+}
+
+button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-2px);
+}
+
+.btn-outline {
+    border: 2px solid var(--border-color);
+    color: var(--text-muted);
+}
+
+.btn-outline:hover {
+    border-color: var(--text-color);
+    color: var(--text-color);
+}
+
+.actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 32px;
+}
+
+.btn-action {
+    flex: 1;
+    padding: 16px;
+    font-size: 0.9rem;
+    color: white;
+    opacity: 0.9;
+}
+
+.btn-action:hover {
+    opacity: 1;
+    transform: translateY(-2px);
+}
+
+.btn-hard { background-color: var(--danger-color); }
+.btn-good { background-color: var(--warning-color); color: black; }
+.btn-easy { background-color: var(--success-color); }
+
+.audio-btn {
+    background-color: rgba(99, 102, 241, 0.1);
+    color: var(--primary-color);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto 24px;
+    padding: 0;
+}
+
+.audio-btn:hover {
+    background-color: rgba(99, 102, 241, 0.2);
+    transform: scale(1.1);
+}
+
+.audio-icon {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.reveal-overlay {
+    margin-top: 20px;
+}
+
+.stats {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}

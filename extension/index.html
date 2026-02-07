@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My FlashTabs</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div id="flashcard" class="flashcard">
+            <button id="play-audio" class="audio-btn" title="Play Audio">
+                <svg class="audio-icon" viewBox="0 0 24 24">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                </svg>
+            </button>
+            
+            <div class="word-display">
+                <h1 id="word" class="word">Loading...</h1>
+                <p id="meaning" class="meaning hidden">...</p>
+            </div>
+
+            <div id="reveal-area" class="reveal-overlay">
+                <button id="reveal-btn" class="btn-primary">Show Answer</button>
+            </div>
+
+            <div id="actions" class="actions hidden">
+                <button class="btn-action btn-hard" data-ease="1">Hard</button>
+                <button class="btn-action btn-good" data-ease="2.5">Good</button>
+                <button class="btn-action btn-easy" data-ease="4">Easy</button>
+            </div>
+        </div>
+        
+        <div id="empty-state" class="flashcard hidden">
+            <h1 class="word">All Done! 🎉</h1>
+            <p class="meaning">You've reviewed all cards for now.</p>
+            <button id="reset-btn" class="btn-outline" style="margin-top: 20px;">Reset for Demo</button>
+        </div>
+    </div>
+
+    <div class="stats">
+        Due: <span id="due-count">0</span>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
