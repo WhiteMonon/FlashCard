@@ -30,6 +30,7 @@ cards = Table(
     Column("deck_id", UUID(as_uuid=True), index=True, nullable=False), # ForeignKey would be ideal but keeping it simple for asyncpg setup without full ORM relationship validation
     Column("word", String, nullable=False),
     Column("meaning", String, nullable=False),
+    Column("ipa", String, nullable=True),
     Column("interval", sqlalchemy.Float, default=0.0),
     Column("repetition", sqlalchemy.Integer, default=0),
     Column("ease", sqlalchemy.Float, default=2.5),

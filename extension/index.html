@@ -95,7 +95,10 @@
                     <!-- Selected Card Details -->
                     <div id="card-details-panel" class="card-details-panel hidden">
                         <div class="detail-header">
-                            <h1 id="detail-word">Word</h1>
+                            <div>
+                                <h1 id="detail-word">Word</h1>
+                                <p id="detail-ipa" class="detail-ipa"></p>
+                            </div>
                             <button id="play-audio-detail" class="btn-icon small-icon" title="Play Audio">
                                 <svg class="icon" viewBox="0 0 24 24">
                                     <path
@@ -143,6 +146,7 @@
                 <div id="flashcard" class="card">
                     <div class="card-content">
                         <h2 id="word" class="word">Loading...</h2>
+                        <p id="ipa" class="ipa"></p>
                         <div id="reveal-area" class="reveal-area">
                             <button id="reveal-btn" class="btn-primary large">Show Answer</button>
                         </div>

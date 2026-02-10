@@ -9,6 +9,7 @@ from databases import Database
 from sqlalchemy import create_engine
 from contextlib import asynccontextmanager
 import models
+import eng_to_ipa as ipa
 
 # Environment Variables
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://flashcard:flashcard123@localhost:5432/flashcard_db")
@@ -74,6 +75,12 @@ async def lifespan(app: FastAPI):
     """)
     await database.execute("CREATE INDEX IF NOT EXISTS idx_cards_deck_id ON cards (deck_id);")
 
+    # Migration: Add ipa column to cards if it doesn't exist
+    try:
+        await database.execute("ALTER TABLE cards ADD COLUMN IF NOT EXISTS ipa TEXT;")
+    except Exception as e:
+        print(f"Migration warning: {e}")
+
     yield
     # Shutdown
     await database.disconnect()
@@ -130,15 +137,16 @@ async def create_deck(deck: DeckImport):
                 "id": uuid.uuid4(),
                 "deck_id": deck_id,
                 "word": card.word,
-                "meaning": card.meaning
+                "meaning": card.meaning,
+                "ipa": ipa.convert(card.word)
             })
             # Background Audio Generation Trigger (Fire and forget or queue)
             # For now, we'll let the client trigger audio fetches or do it lazily. 
             # Or we can just let 'get_audio' handle it when reviewed.
             
         query_cards = """
-        INSERT INTO cards (id, deck_id, word, meaning) 
-        VALUES (:id, :deck_id, :word, :meaning)
+        INSERT INTO cards (id, deck_id, word, meaning, ipa) 
+        VALUES (:id, :deck_id, :word, :meaning, :ipa)
         """
         await database.execute_many(query_cards, values)
 
@@ -155,12 +163,13 @@ async def add_cards_to_deck(deck_id: str, cards: List[CardCreate]):
             "id": uuid.uuid4(),
             "deck_id": deck_id,
             "word": card.word,
-            "meaning": card.meaning
+            "meaning": card.meaning,
+            "ipa": ipa.convert(card.word)
         })
         
     query_cards = """
-    INSERT INTO cards (id, deck_id, word, meaning) 
-    VALUES (:id, :deck_id, :word, :meaning)
+    INSERT INTO cards (id, deck_id, word, meaning, ipa) 
+    VALUES (:id, :deck_id, :word, :meaning, :ipa)
     """
     await database.execute_many(query_cards, values)
     

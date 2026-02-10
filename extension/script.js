@@ -32,6 +32,7 @@ const addCardBtn = document.getElementById('add-card-btn');
 const cardDetailsPanel = document.getElementById('card-details-panel');
 const noSelectionMsg = document.getElementById('no-selection-msg');
 const detailWord = document.getElementById('detail-word');
+const detailIpa = document.getElementById('detail-ipa');
 const detailMeaning = document.getElementById('detail-meaning');
 const detailNextReview = document.getElementById('detail-next-review');
 const detailInterval = document.getElementById('detail-interval');
@@ -42,6 +43,7 @@ const deleteCardBtn = document.getElementById('delete-card-btn');
 // Review Elements
 const cardEl = document.getElementById('flashcard');
 const wordEl = document.getElementById('word');
+const ipaEl = document.getElementById('ipa');
 const meaningEl = document.getElementById('meaning');
 const revealArea = document.getElementById('reveal-area');
 const actionsEl = document.getElementById('actions');
@@ -401,6 +403,7 @@ function showCardDetails(card) {
     cardDetailsPanel.classList.remove('hidden');
 
     detailWord.textContent = card.word;
+    detailIpa.textContent = card.ipa ? `/${card.ipa}/` : '';
     detailMeaning.textContent = card.meaning;
 
     const nextReview = card.next_review ? new Date(card.next_review).toLocaleString() : 'Ready';
@@ -578,6 +581,8 @@ async function renderReviewView() {
 function showCard(card) {
     currentCard = card;
     wordEl.textContent = card.word;
+    ipaEl.textContent = card.ipa ? `/${card.ipa}/` : '';
+    if (card.ipa) ipaEl.classList.remove('hidden'); else ipaEl.classList.add('hidden');
     meaningEl.textContent = card.meaning;
 
     meaningEl.classList.add('hidden');

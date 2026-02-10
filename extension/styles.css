@@ -400,6 +400,16 @@ input:checked+.slider:before {
     margin: 0;
 }
 
+.detail-ipa {
+    font-family: 'Courier New', monospace;
+    color: #a5b4fc;
+    /* Lighter indigo */
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+    opacity: 1;
+    font-weight: 600;
+}
+
 .detail-meaning {
     font-size: 1.25rem;
     color: var(--text-muted);
@@ -487,6 +497,16 @@ input:checked+.slider:before {
     font-weight: 800;
     margin-bottom: 16px;
     line-height: 1.2;
+}
+
+.ipa {
+    font-family: 'Courier New', monospace;
+    color: #a5b4fc;
+    /* Lighter indigo */
+    font-size: 1.5rem;
+    margin-bottom: 16px;
+    opacity: 1;
+    font-weight: 600;
 }
 
 .meaning {
