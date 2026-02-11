@@ -59,27 +59,41 @@ async def lifespan(app: FastAPI):
     );
     """)
 
-    # Cards Table
+    # Cards Table (FSRS schema)
     await database.execute("""
     CREATE TABLE IF NOT EXISTS cards (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         deck_id UUID NOT NULL,
         word TEXT NOT NULL,
         meaning TEXT NOT NULL,
-        interval FLOAT DEFAULT 0,
-        repetition INTEGER DEFAULT 0,
-        ease FLOAT DEFAULT 2.5,
+        ipa TEXT,
+        stability FLOAT DEFAULT 0,
+        difficulty FLOAT DEFAULT 0,
+        state INTEGER DEFAULT 0,
+        reps INTEGER DEFAULT 0,
+        last_review BIGINT DEFAULT 0,
         next_review BIGINT DEFAULT 0,
         created_at TIMESTAMP DEFAULT NOW()
     );
     """)
     await database.execute("CREATE INDEX IF NOT EXISTS idx_cards_deck_id ON cards (deck_id);")
 
-    # Migration: Add ipa column to cards if it doesn't exist
-    try:
-        await database.execute("ALTER TABLE cards ADD COLUMN IF NOT EXISTS ipa TEXT;")
-    except Exception as e:
-        print(f"Migration warning: {e}")
+    # Migration: thêm columns FSRS nếu chưa có (cho database cũ)
+    for col_def in [
+        "ipa TEXT",
+        "stability FLOAT DEFAULT 0",
+        "difficulty FLOAT DEFAULT 0",
+        "state INTEGER DEFAULT 0",
+        "reps INTEGER DEFAULT 0",
+        "reps INTEGER DEFAULT 0",
+        "step INTEGER DEFAULT 0",
+        "last_review BIGINT DEFAULT 0",
+    ]:
+        col_name = col_def.split()[0]
+        try:
+            await database.execute(f"ALTER TABLE cards ADD COLUMN IF NOT EXISTS {col_def};")
+        except Exception as e:
+            print(f"Migration warning ({col_name}): {e}")
 
     yield
     # Shutdown
@@ -189,23 +203,32 @@ async def sync_data():
     return result
 
 class CardUpdate(BaseModel):
-    interval: float
-    repetition: int
-    ease: float
+    stability: float
+    difficulty: float
+    state: int
+    state: int
+    reps: int
+    step: int
+    last_review: int
     next_review: int
 
 @app.patch("/cards/{card_id}")
 async def update_card(card_id: str, update: CardUpdate):
     query = """
     UPDATE cards 
-    SET interval = :interval, repetition = :repetition, ease = :ease, next_review = :next_review
+    SET stability = :stability, difficulty = :difficulty, state = :state,
+        reps = :reps, step = :step, last_review = :last_review, next_review = :next_review
     WHERE id = :id
     """
     await database.execute(query, values={
         "id": card_id,
-        "interval": update.interval,
-        "repetition": update.repetition,
-        "ease": update.ease,
+        "stability": update.stability,
+        "difficulty": update.difficulty,
+        "state": update.state,
+        "state": update.state,
+        "reps": update.reps,
+        "step": update.step,
+        "last_review": update.last_review,
         "next_review": update.next_review
     })
     return {"status": "updated", "id": card_id}

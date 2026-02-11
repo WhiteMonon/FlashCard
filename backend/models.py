@@ -27,13 +27,16 @@ cards = Table(
     "cards",
     metadata,
     Column("id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),
-    Column("deck_id", UUID(as_uuid=True), index=True, nullable=False), # ForeignKey would be ideal but keeping it simple for asyncpg setup without full ORM relationship validation
+    Column("deck_id", UUID(as_uuid=True), index=True, nullable=False),
     Column("word", String, nullable=False),
     Column("meaning", String, nullable=False),
     Column("ipa", String, nullable=True),
-    Column("interval", sqlalchemy.Float, default=0.0),
-    Column("repetition", sqlalchemy.Integer, default=0),
-    Column("ease", sqlalchemy.Float, default=2.5),
-    Column("next_review", sqlalchemy.BigInteger, default=0), # Store as timestamp ms
+    Column("stability", sqlalchemy.Float, default=0.0),
+    Column("difficulty", sqlalchemy.Float, default=0.0),
+    Column("state", sqlalchemy.Integer, default=0),
+    Column("reps", sqlalchemy.Integer, default=0),
+    Column("step", sqlalchemy.Integer, default=0),
+    Column("last_review", sqlalchemy.BigInteger, default=0),
+    Column("next_review", sqlalchemy.BigInteger, default=0),  # Timestamp ms
     Column("created_at", DateTime, default=func.now()),
 )

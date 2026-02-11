@@ -4,7 +4,8 @@ const API_URL = 'http://localhost:8000';
 const viewDashboard = document.getElementById('view-dashboard');
 const viewManage = document.getElementById('view-manage');
 const viewReview = document.getElementById('view-review');
-const views = [viewDashboard, viewManage, viewReview];
+const viewSettings = document.getElementById('view-settings');
+const views = [viewDashboard, viewManage, viewReview, viewSettings];
 
 // Dashboard Elements
 const deckGrid = document.getElementById('deck-grid');
@@ -36,7 +37,7 @@ const detailIpa = document.getElementById('detail-ipa');
 const detailMeaning = document.getElementById('detail-meaning');
 const detailNextReview = document.getElementById('detail-next-review');
 const detailInterval = document.getElementById('detail-interval');
-const detailEase = document.getElementById('detail-ease');
+const detailDifficulty = document.getElementById('detail-difficulty');
 const playAudioDetailBtn = document.getElementById('play-audio-detail');
 const deleteCardBtn = document.getElementById('delete-card-btn');
 
@@ -56,15 +57,26 @@ const backToHomeBtn = document.getElementById('back-to-home-btn');
 // Top Bar
 const homeBtn = document.getElementById('home-btn');
 const dashboardBtn = document.getElementById('dashboard-btn');
+const settingsBtn = document.getElementById('settings-btn');
+
+// Settings Elements
+const settingRetention = document.getElementById('setting-retention');
+const retentionValueEl = document.getElementById('retention-value');
+const settingLearningSteps = document.getElementById('setting-learning-steps');
+const settingRelearningSteps = document.getElementById('setting-relearning-steps');
+const saveSettingsBtn = document.getElementById('save-settings-btn');
+const resetSettingsBtn = document.getElementById('reset-settings-btn');
 
 // State
 let currentDeckId = null;
 let currentDeck = null;
 let currentCard = null;
 let selectedCardId = null;
+let fsrsSettings = getDefaultSettings();
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
+    await loadSettings();
     await fsync();
 
     // Setup Global Event Listeners (Event Delegation)
@@ -97,8 +109,17 @@ function switchView(viewName) {
         viewReview.classList.remove('hidden');
         homeBtn.style.display = 'none'; // No Back Button on Home
         dashboardBtn.style.display = 'flex'; // Go to Deck Manager
+        settingsBtn.style.display = 'flex';
         currentDeckId = null; // Reset to "Review All" mode when going home
         renderReviewView();
+    } else if (viewName === 'settings') {
+        // Settings View
+        viewSettings.classList.remove('hidden');
+        homeBtn.style.display = 'flex';
+        homeBtn.dataset.target = 'review';
+        dashboardBtn.style.display = 'flex';
+        settingsBtn.style.display = 'none'; // Đang ở Settings rồi
+        renderSettingsView();
     }
 }
 
@@ -111,6 +132,7 @@ function setupEventListeners() {
     });
 
     dashboardBtn.addEventListener('click', () => switchView('dashboard'));
+    settingsBtn.addEventListener('click', () => switchView('settings'));
     backToHomeBtn.addEventListener('click', () => switchView('dashboard'));
 
     // Dashboard: Deck List Delegation
@@ -177,8 +199,8 @@ function setupEventListeners() {
 
     actionsEl.addEventListener('click', (e) => {
         if (e.target.matches('.btn-action')) {
-            const ease = parseFloat(e.target.dataset.ease);
-            handleReview(ease);
+            const rating = parseInt(e.target.dataset.rating);
+            handleReview(rating);
         }
     });
 
@@ -192,6 +214,13 @@ function setupEventListeners() {
         if (e.target == createDeckModal) createDeckModal.classList.add('hidden');
     });
     confirmCreateDeckBtn.addEventListener('click', handleCreateDeck);
+
+    // Settings Events
+    settingRetention.addEventListener('input', () => {
+        retentionValueEl.textContent = `${settingRetention.value}%`;
+    });
+    saveSettingsBtn.addEventListener('click', saveSettings);
+    resetSettingsBtn.addEventListener('click', resetSettings);
 
     // Keyboard Shortcuts
     document.addEventListener('keydown', handleKeyboardShortcuts);
@@ -409,14 +438,16 @@ function showCardDetails(card) {
     const nextReview = card.next_review ? new Date(card.next_review).toLocaleString() : 'Ready';
     detailNextReview.textContent = nextReview;
 
-    const interval = card.interval ? card.interval : 0;
-    detailInterval.textContent = interval >= 60 * 24
-        ? `${Math.round(interval / (60 * 24))}d`
-        : `${Math.round(interval / 60)}h`;
+    // Hiển thị stability (ngày)
+    const stability = card.stability || 0;
+    detailInterval.textContent = stability >= 1
+        ? `${stability.toFixed(1)}d`
+        : `${(stability * 24).toFixed(1)}h`;
 
-    detailEase.textContent = (card.ease || 2.5).toFixed(2);
+    // Hiển thị difficulty (1-10)
+    detailDifficulty.textContent = (card.difficulty || 0).toFixed(1);
 
-    // Store current detail card id if needed for actions
+    // Lưu card id cho các action
     deleteCardBtn.dataset.id = card.id;
     deleteCardBtn.dataset.word = card.word;
 }
@@ -470,9 +501,12 @@ async function handleAddCard() {
             word: word,
             meaning: meaning,
             next_review: Date.now(),
-            interval: 0,
-            repetition: 0,
-            ease: 2.5
+            stability: 0,
+            difficulty: 0,
+            state: 0,
+            reps: 0,
+            step: 0,
+            last_review: 0
         }];
 
         const res = await fetch(`${API_URL}/decks/${currentDeckId}/cards`, {
@@ -592,6 +626,9 @@ function showCard(card) {
     cardEl.classList.remove('hidden');
     emptyState.classList.add('hidden');
 
+    // Hiển thị interval preview trên các nút
+    updateIntervalPreviews(card);
+
     playAudio(card.word);
 }
 
@@ -614,45 +651,46 @@ function toggleFlashcard() {
     }, 200);
 }
 
-async function handleReview(difficultyMultiplier) {
+async function handleReview(grade) {
     if (!currentCard) return;
 
     const now = Date.now();
-    let interval = currentCard.interval || 0;
-    let repetition = currentCard.repetition || 0;
-    let ease = currentCard.ease || 2.5;
 
-    if (difficultyMultiplier === 1) { // Hard
-        interval = 1;
-        repetition = 0;
-    } else {
-        if (repetition === 0) {
-            interval = 1;
-        } else if (repetition === 1) {
-            interval = 10;
-        } else {
-            interval = Math.round(interval * ease);
-        }
-        repetition += 1;
-    }
-
-    const nextReview = now + (interval * 60 * 1000);
+    // Dùng FSRS engine với settings để tính scheduling mới
+    const updated = reviewCard(currentCard, grade, now, fsrsSettings);
 
     // Optimistic Update
-    currentCard.interval = interval;
-    currentCard.repetition = repetition;
-    currentCard.ease = ease;
-    currentCard.next_review = nextReview;
+    currentCard.stability = updated.stability;
+    currentCard.difficulty = updated.difficulty;
+    currentCard.state = updated.state;
+    currentCard.reps = updated.reps;
+    currentCard.step = updated.step;
+    currentCard.last_review = updated.last_review;
+    currentCard.next_review = updated.next_review;
+
+    const intervalMs = updated.next_review - now;
+    console.log(`[FSRS Review] Word: ${currentCard.word}`);
+    console.log(`- Rating: ${grade} (1:Again, 2:Hard, 3:Good, 4:Easy)`);
+    console.log(`- State: ${updated.state} (0:New, 1:Learning, 2:Review, 3:Relearning)`);
+    console.log(`- Stability: ${updated.stability.toFixed(2)}d | Difficulty: ${updated.difficulty.toFixed(2)}`);
+    console.log(`- Next Review: ${formatInterval(intervalMs)} (${new Date(updated.next_review).toLocaleString()})`);
 
     const data = await chrome.storage.local.get('cards');
     const updatedCards = data.cards.map(c => c.id === currentCard.id ? currentCard : c);
     await chrome.storage.local.set({ cards: updatedCards });
 
+    // Gửi lên backend (fire and forget)
     fetch(`${API_URL}/cards/${currentCard.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            interval, repetition, ease, next_review: nextReview
+            stability: updated.stability,
+            difficulty: updated.difficulty,
+            state: updated.state,
+            reps: updated.reps,
+            step: updated.step,
+            last_review: updated.last_review,
+            next_review: updated.next_review
         })
     }).catch(console.error);
 
@@ -662,6 +700,97 @@ async function handleReview(difficultyMultiplier) {
 function showEmptyState() {
     cardEl.classList.add('hidden');
     emptyState.classList.remove('hidden');
+}
+
+// --- Settings Logic ---
+
+/**
+ * Load FSRS settings từ chrome.storage.local
+ */
+async function loadSettings() {
+    try {
+        const data = await chrome.storage.local.get('fsrsSettings');
+        if (data.fsrsSettings) {
+            fsrsSettings = { ...getDefaultSettings(), ...data.fsrsSettings };
+        }
+    } catch (e) {
+        console.error('Lỗi load settings:', e);
+    }
+}
+
+/**
+ * Save settings hiện tại trên form vào chrome.storage.local
+ */
+async function saveSettings() {
+    // Parse learning steps
+    const learningSteps = parseSteps(settingLearningSteps.value);
+    const relearningSteps = parseSteps(settingRelearningSteps.value);
+
+    if (!learningSteps.length) {
+        alert('Learning Steps không hợp lệ. Nhập các số cách nhau bằng dấu phẩy (vd: 1, 10)');
+        return;
+    }
+    if (!relearningSteps.length) {
+        alert('Relearning Steps không hợp lệ. Nhập các số cách nhau bằng dấu phẩy (vd: 10)');
+        return;
+    }
+
+    fsrsSettings = {
+        desiredRetention: parseInt(settingRetention.value) / 100,
+        learningSteps: learningSteps,
+        relearningSteps: relearningSteps,
+    };
+
+    await chrome.storage.local.set({ fsrsSettings });
+    saveSettingsBtn.textContent = 'Saved ✓';
+    setTimeout(() => { saveSettingsBtn.textContent = 'Save Settings'; }, 1500);
+}
+
+/**
+ * Reset settings về mặc định
+ */
+async function resetSettings() {
+    fsrsSettings = getDefaultSettings();
+    await chrome.storage.local.set({ fsrsSettings });
+    renderSettingsView();
+}
+
+/**
+ * Render Settings view từ fsrsSettings hiện tại
+ */
+function renderSettingsView() {
+    settingRetention.value = Math.round(fsrsSettings.desiredRetention * 100);
+    retentionValueEl.textContent = `${Math.round(fsrsSettings.desiredRetention * 100)}%`;
+    settingLearningSteps.value = fsrsSettings.learningSteps.join(', ');
+    settingRelearningSteps.value = fsrsSettings.relearningSteps.join(', ');
+}
+
+/**
+ * Parse chuỗi steps "1, 10, 30" thành array [1, 10, 30]
+ */
+function parseSteps(str) {
+    return str.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n) && n > 0);
+}
+
+/**
+ * Cập nhật interval preview trên các nút review
+ */
+function updateIntervalPreviews(card) {
+    if (!card) return;
+    const now = Date.now();
+    const previews = previewIntervals(card, now, fsrsSettings);
+
+    // Tìm tất cả nút review và thêm preview
+    actionsEl.querySelectorAll('.btn-action').forEach(btn => {
+        const rating = btn.dataset.rating;
+        if (rating && previews[rating]) {
+            // Lấy tên nút gốc (Easy, Good, Hard, Again)
+            const label = btn.classList.contains('easy') ? 'Easy' :
+                btn.classList.contains('good') ? 'Good' :
+                    btn.classList.contains('hard') ? 'Hard' : 'Again';
+            btn.innerHTML = `${label}<span class="interval-preview">${previews[rating]}</span>`;
+        }
+    });
 }
 
 // --- Shared Logic ---
@@ -700,10 +829,16 @@ function handleKeyboardShortcuts(e) {
             toggleFlashcard();
         }
     } else if (e.code === 'Digit1') {
+        // Easy (rating=4)
         if (!meaningEl.classList.contains('hidden')) handleReview(4);
     } else if (e.code === 'Digit2') {
-        if (!meaningEl.classList.contains('hidden')) handleReview(2.5);
+        // Good (rating=3)
+        if (!meaningEl.classList.contains('hidden')) handleReview(3);
     } else if (e.code === 'Digit3') {
+        // Hard (rating=2)
+        if (!meaningEl.classList.contains('hidden')) handleReview(2);
+    } else if (e.code === 'Digit4') {
+        // Again (rating=1)
         if (!meaningEl.classList.contains('hidden')) handleReview(1);
     }
 }
